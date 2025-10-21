@@ -35,12 +35,12 @@ AI-powered receipt management system with cloud infrastructure and intelligent e
 
 ### Environment Variables
 
-AWS_ACCESS_KEY_ID=your_key
-AWS_SECRET_ACCESS_KEY=your_secret
-AWS_REGION=eu-central-1
-AWS_S3_BUCKET=your-bucket
-OPENAI_API_KEY=your_key
-JWT_SECRET=your_secret
+- AWS_ACCESS_KEY_ID=your_key
+- AWS_SECRET_ACCESS_KEY=your_secret
+- AWS_REGION=eu-central-1
+- AWS_S3_BUCKET=your-bucket
+- OPENAI_API_KEY=your_key
+- JWT_SECRET=your_secret
 
 ## Key Achievements
 
