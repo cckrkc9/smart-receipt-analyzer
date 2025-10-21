@@ -34,7 +34,7 @@ AI-powered receipt management system with cloud infrastructure and intelligent e
 - Stateless Session Management
 
 ### Environment Variables
-```bash
+
 AWS_ACCESS_KEY_ID=your_key
 AWS_SECRET_ACCESS_KEY=your_secret
 AWS_REGION=eu-central-1
