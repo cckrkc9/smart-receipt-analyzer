@@ -4,6 +4,9 @@ import com.cancikrikci.receiptprocessor.entity.User;
 import com.cancikrikci.receiptprocessor.dto.response.AuthResponse;
 import com.cancikrikci.receiptprocessor.dto.request.LoginRequest;
 import com.cancikrikci.receiptprocessor.dto.request.RegisterRequest;
+import com.cancikrikci.receiptprocessor.exception.AuthenticationException;
+import com.cancikrikci.receiptprocessor.exception.UserNotFoundException;
+import com.cancikrikci.receiptprocessor.exception.UsernameAlreadyExistsException;
 import com.cancikrikci.receiptprocessor.repository.UserRepository;
 import com.cancikrikci.receiptprocessor.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +16,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,52 +36,37 @@ public class AuthController {
     private final JwtUtil jwtUtil;
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
-        try {
-            Optional<User> existingUser = userRepository.findByUsername(request.getUsername());
-            if (existingUser.isPresent()) {
-                log.warn("Username already exists: {}", request.getUsername());
-                return ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body(AuthResponse.builder()
-                                .message("Username already exists")
-                                .build());
-            }
-
-            User user = User.builder()
-                    .userId(UUID.randomUUID().toString())
-                    .username(request.getUsername())
-                    .email(request.getEmail())
-                    .passwordHash(passwordEncoder.encode(request.getPassword()))
-                    .role(request.getRole() != null ? request.getRole() : "USER")
-                    .createdAt(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
-                    .build();
-
-            userRepository.save(user);
-
-            String token = jwtUtil.generateToken(user.getUsername());
-
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(AuthResponse.builder()
-                            .token(token)
-                            .username(user.getUsername())
-                            .email(user.getEmail())
-                            .role(user.getRole())
-                            .message("User registered successfully")
-                            .build());
-
-        } catch (Exception e) {
-            log.error("Registration failed for username: {}", request.getUsername(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(AuthResponse.builder()
-                            .message("Registration failed: " + e.getMessage())
-                            .build());
+    public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
+        Optional<User> existingUser = userRepository.findByUsername(request.getUsername());
+        if (existingUser.isPresent()) {
+            throw new UsernameAlreadyExistsException(request.getUsername());
         }
+
+        User user = User.builder()
+                .userId(UUID.randomUUID().toString())
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .role(request.getRole() != null ? request.getRole() : "USER")
+                .createdAt(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+                .build();
+
+        userRepository.save(user);
+        String token = jwtUtil.generateToken(user.getUsername());
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(AuthResponse.builder()
+                        .token(token)
+                        .username(user.getUsername())
+                        .email(user.getEmail())
+                        .role(user.getRole())
+                        .message("User registered successfully")
+                        .build());
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
         try {
-
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             request.getUsername(),
@@ -90,7 +77,7 @@ public class AuthController {
             String token = jwtUtil.generateToken(authentication.getName());
 
             User user = userRepository.findByUsername(request.getUsername())
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+                    .orElseThrow(() -> new UserNotFoundException(request.getUsername()));
 
             return ResponseEntity.ok(AuthResponse.builder()
                     .token(token)
@@ -102,47 +89,26 @@ public class AuthController {
 
         } catch (AuthenticationException e) {
             log.error("Login failed for username: {}", request.getUsername(), e);
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(AuthResponse.builder()
-                            .message("Invalid username or password")
-                            .build());
-        } catch (Exception e) {
-            log.error("Unexpected error during login for username: {}", request.getUsername(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(AuthResponse.builder()
-                            .message("Login failed: " + e.getMessage())
-                            .build());
+            throw new AuthenticationException("Invalid username or password");
         }
     }
 
     @GetMapping("/validate")
-    public ResponseEntity<?> validateToken(@RequestHeader("Authorization") String authHeader) {
-        try {
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7);
-                
-                if (jwtUtil.validateToken(token)) {
-                    String username = jwtUtil.extractUsername(token);
-                    
-                    return ResponseEntity.ok(AuthResponse.builder()
-                            .username(username)
-                            .message("Token is valid")
-                            .build());
-                }
+    public ResponseEntity<AuthResponse> validateToken(@RequestHeader("Authorization") String authHeader) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+
+            if (jwtUtil.validateToken(token)) {
+                String username = jwtUtil.extractUsername(token);
+
+                return ResponseEntity.ok(AuthResponse.builder()
+                        .username(username)
+                        .message("Token is valid")
+                        .build());
             }
-            
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(AuthResponse.builder()
-                            .message("Invalid token")
-                            .build());
-                            
-        } catch (Exception e) {
-            log.error("Token validation error", e);
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(AuthResponse.builder()
-                            .message("Token validation failed")
-                            .build());
         }
+
+        throw new AuthenticationException("Invalid token");
     }
 }
 

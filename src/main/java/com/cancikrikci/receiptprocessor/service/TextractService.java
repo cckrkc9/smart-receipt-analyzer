@@ -2,6 +2,8 @@ package com.cancikrikci.receiptprocessor.service;
 
 import com.cancikrikci.receiptprocessor.entity.Receipt;
 import com.cancikrikci.receiptprocessor.entity.User;
+import com.cancikrikci.receiptprocessor.exception.TextractProcessingException;
+import com.cancikrikci.receiptprocessor.exception.UserNotFoundException;
 import com.cancikrikci.receiptprocessor.repository.UserRepository;
 import com.cancikrikci.receiptprocessor.util.ExpenseClassifier;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +38,7 @@ public class TextractService {
         
         try {
             User user = userRepository.findByUsername(username)
-                    .orElseThrow(() -> new RuntimeException("User not found: " + username));
+                    .orElseThrow(() -> new UserNotFoundException(username));
 
             DetectDocumentTextRequest request = DetectDocumentTextRequest.builder()
                     .document(Document.builder()
@@ -76,7 +78,7 @@ public class TextractService {
             
         } catch (Exception e) {
             log.error("Error processing file {} from bucket {}: {}", key, bucket, e.getMessage(), e);
-            throw new RuntimeException("Failed to process file with Textract", e);
+            throw new TextractProcessingException("Failed to process file with Textract", e);
         }
     }
 

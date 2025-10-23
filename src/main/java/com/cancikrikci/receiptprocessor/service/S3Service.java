@@ -1,5 +1,6 @@
 package com.cancikrikci.receiptprocessor.service;
 
+import com.cancikrikci.receiptprocessor.exception.S3UploadException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,7 +12,6 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -51,7 +51,7 @@ public class S3Service {
             
         } catch (IOException e) {
             log.error("Failed to upload file to S3: {}", e.getMessage(), e);
-            throw new UncheckedIOException(e);
+            throw new S3UploadException("Failed to upload file to S3", e);
         }
 
         return key;
