@@ -57,7 +57,7 @@ AI-powered receipt management system with cloud infrastructure and intelligent e
 - [x] JWT authentication
 - [x] AWS services integration
 - [x] Spring AI expense categorization
-- [ ] Global exception handling
-- [ ] DTO validation
+- [x] Global exception handling
+- [x] DTO validation
 - [ ] Unit & integration tests
 
